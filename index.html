@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Classroom Atelier</title>
+    
+    <!-- Google Fonts for that "Book/Journal" feel -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- Reggio "Lumi" Aesthetics --- */
+        :root {
+            /* Palette: Earth, Paper, Stone, Leaf */
+            --bg-paper: #FDFBF7;
+            --bg-canvas: #F2F0E9;
+            --glass-white: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.4);
+            
+            --color-sage: #7C9082;
+            --color-clay: #D4A373;
+            --color-stone: #4A4A4A;
+            --color-pebble: #A8B5BA;
+            
+            --shadow-soft: 0 10px 30px rgba(124, 144, 130, 0.15);
+            --shadow-window: 0 20px 50px rgba(74, 74, 74, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            width: 100vw;
+            /* Outer background: Dark warm grey to focus on the "screen" */
+            background-color: #2D2A26; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Lato', sans-serif;
+            font-size: 14px;
+            color: var(--color-stone);
+            user-select: none;
+            -webkit-font-smoothing: antialiased;
+            overscroll-behavior: none;
+        }
+
+        /* --- The Virtual Canvas --- */
+        #virtual-screen {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            max-width: 1200px; 
+            max-height: 800px;
+            
+            /* Reggio Texture: Warm Paper with subtle grain */
+            background-color: var(--bg-paper);
+            background-image: 
+                radial-gradient(var(--color-sage) 1px, transparent 1px),
+                radial-gradient(var(--color-clay) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
+            
+            /* Soft rounded "Device" look */
+            border-radius: 20px;
+            box-shadow: 0 0 0 8px #3E3B36, 0 20px 60px rgba(0,0,0,0.5);
+            
+            overflow: hidden; 
+        }
+
+        /* Mobile override */
+        @media (max-width: 600px) {
+            #virtual-screen {
+                max-width: 100%;
+                max-height: 100%;
+                border-radius: 0;
+                box-shadow: none;
+            }
+        }
+
+        /* --- Provocation Bar (Menu) --- */
+        #menubar {
+            background-color: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(10px);
+            height: 48px;
+            border-bottom: 1px solid rgba(124, 144, 130, 0.2);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10000;
+            box-sizing: border-box;
+            font-family: 'Playfair Display', serif;
+            font-style: italic;
+        }
+
+        .menu-title {
+            padding: 6px 16px;
+            border-radius: 20px;
+            margin-right: 4px;
+            height: auto;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            position: relative; 
+            transition: background-color 0.2s;
+            color: var(--color-stone);
+        }
+
+        .menu-title:hover, .menu-title.active {
+            background-color: var(--color-sage);
+            color: white;
+        }
+
+        .apple-logo {
+            font-size: 18px;
+            font-style: normal;
+            font-weight: bold;
+        }
+
+        /* --- Dropdown Menus --- */
+        .dropdown-menu {
+            position: absolute;
+            top: 40px;
+            left: 0;
+            background-color: white;
+            border: 1px solid rgba(0,0,0,0.05);
+            border-radius: 12px;
+            box-shadow: var(--shadow-soft);
+            min-width: 180px;
+            display: none;
+            flex-direction: column;
+            padding: 8px 0;
+            color: var(--color-stone);
+            z-index: 20000;
+            font-family: 'Lato', sans-serif;
+            font-style: normal;
+        }
+
+        .dropdown-menu.visible {
+            display: flex;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-item {
+            padding: 8px 20px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.1s;
+        }
+
+        .dropdown-item:hover {
+            background-color: var(--bg-canvas);
+            color: var(--color-sage);
+        }
+
+        .dropdown-separator {
+            height: 1px;
+            background-color: #eee;
+            margin: 6px 20px;
+            width: auto;
+        }
+
+        /* --- Desktop Icons ("Loose Parts") --- */
+        .desktop-icon {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            z-index: 50; 
+            width: 80px;
+            transition: transform 0.1s;
+        }
+        
+        .desktop-icon:active {
+            transform: scale(0.95);
+        }
+        
+        .desktop-icon svg {
+            width: 48px;
+            height: 48px;
+            display: block;
+            margin-bottom: 8px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1));
+            transition: filter 0.2s;
+        }
+
+        .desktop-icon:hover svg {
+            filter: drop-shadow(0 6px 12px rgba(124, 144, 130, 0.3));
+        }
+
+        .icon-label {
+            background-color: rgba(255,255,255,0.6);
+            backdrop-filter: blur(4px);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            color: var(--color-stone);
+            font-size: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        /* Icon Positions */
+        #icon-hd { top: 70px; right: 30px; }
+        #icon-trash { bottom: 30px; right: 30px; }
+
+        /* --- Window System (The "Light Table") --- */
+        .window {
+            position: absolute;
+            background-color: var(--glass-white);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--shadow-window);
+            display: flex;
+            flex-direction: column;
+            min-width: 240px;
+            min-height: 180px;
+            transition: box-shadow 0.2s, transform 0.1s;
+        }
+        
+        .window.active {
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+            border-color: rgba(124, 144, 130, 0.5);
+        }
+
+        .title-bar {
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: transparent;
+            cursor: grab;
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .window-controls {
+            position: absolute;
+            left: 12px;
+            display: flex;
+            gap: 6px;
+        }
+
+        .control-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .control-dot:hover { transform: scale(1.1); }
+        .close-box { background-color: #FF8B8B; } /* Soft Red */
+        .zoom-box { background-color: var(--color-sage); } /* Green */
+
+        .window-title {
+            font-family: 'Playfair Display', serif;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--color-stone);
+        }
+
+        .window-info-bar {
+            height: 24px;
+            background-color: rgba(242, 240, 233, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            font-size: 11px;
+            color: #888;
+            flex-shrink: 0;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .window-content {
+            padding: 25px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+            gap: 25px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-grow: 1;
+        }
+
+        /* --- App Icons inside Window --- */
+        .window-icon {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            text-align: center;
+            width: 90px;
+            transition: transform 0.2s;
+        }
+
+        .window-icon:hover {
+            transform: translateY(-2px);
+        }
+        
+        .window-icon:active {
+            transform: scale(0.95);
+        }
+
+        .window-icon svg {
+            width: 42px;
+            height: 42px;
+            margin-bottom: 8px;
+            /* Icons inside windows have a soft clay/sage tint */
+            stroke: var(--color-stone);
+        }
+        
+        .window-icon .icon-label {
+            background: transparent;
+            box-shadow: none;
+            color: var(--color-stone);
+            font-weight: 500;
+        }
+        
+        /* --- Retro Alert Box -> Gentle Note --- */
+        .modal-overlay {
+            position: absolute; 
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 30000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255,255,255,0.4);
+            backdrop-filter: blur(4px);
+        }
+        
+        .alert-box {
+            background-color: #fff;
+            border-radius: 20px;
+            box-shadow: var(--shadow-window);
+            padding: 25px 30px;
+            width: 320px;
+            max-width: 80%;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid white;
+        }
+
+        .alert-content {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            margin-bottom: 25px;
+        }
+
+        .alert-icon-placeholder {
+            margin-right: 20px;
+            color: var(--color-clay);
+        }
+
+        .alert-text {
+            font-family: 'Lato', sans-serif;
+            line-height: 1.5;
+            color: var(--color-stone);
+            font-size: 15px;
+            padding-top: 2px;
+        }
+
+        .alert-button-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .alert-button {
+            background: var(--color-sage);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 32px;
+            color: white;
+            font-family: 'Lato', sans-serif;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+
+        .alert-button:hover {
+            background: #6A7F70;
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- This container is the "Canvas" -->
+    <div id="virtual-screen">
+        
+        <!-- Menu Bar -->
+        <div id="menubar"></div>
+
+        <!-- Desktop Icon: Atelier (Was HD) -->
+        <div id="icon-hd" class="desktop-icon" onclick="openWindow(fileSystem)">
+            <!-- SVG: A simple house/studio shape -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="#7C9082" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21h18"/>
+                <path d="M5 21V7l8-4 8 4v14"/>
+                <path d="M9 10a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v11"/>
+            </svg>
+            <span class="icon-label">My Atelier</span>
+        </div>
+
+        <!-- Desktop Icon: Compost (Was Trash) -->
+        <div id="icon-trash" class="desktop-icon">
+            <!-- SVG: A leaf/recycle concept -->
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D4A373" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 14.5a7.5 7.5 0 0 1 12.5-5.5"/>
+                <path d="M4 14.5v-4"/>
+                <path d="M4 14.5h4"/>
+                <path d="M20 9.5a7.5 7.5 0 0 1-12.5 5.5"/>
+                <path d="M20 9.5v4"/>
+                <path d="M20 9.5h-4"/>
+            </svg>
+            <span class="icon-label">Compost</span>
+        </div>
+
+        <!-- Pop-up Alert Modal -->
+        <div id="systemAlert" class="modal-overlay">
+            <div class="alert-box">
+                <div class="alert-content">
+                    <div class="alert-icon-placeholder">
+                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                         </svg>
+                    </div>
+                    <div class="alert-text" id="alertMessage">Default Message</div>
+                </div>
+                <div class="alert-button-container">
+                    <button class="alert-button" onclick="closeAlert()">Understood</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // =================================================================
+        // 1. ORGANIC ICON LIBRARY (Smoother SVG paths)
+        // =================================================================
+        // Replaced pixel art with clean vector strokes (Lucide-ish style)
+        const iconLibrary = {
+            'default': `<rect x="3" y="3" width="18" height="18" rx="2" stroke="#4A4A4A" stroke-width="1.5" fill="none"/>`,
+            
+            'folder': `<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" fill="#F2F0E9" stroke="#D4A373" stroke-width="1.5"/>`,
+            
+            'map': `<path d="M3 6l9-4 9 4v14l-9-4-9 4V6z" stroke="#7C9082" stroke-width="1.5" fill="none"/><line x1="12" y1="2" x2="12" y2="22" stroke="#7C9082" stroke-width="1.5" opacity="0.5"/>`,
+            
+            'globe': `<circle cx="12" cy="12" r="10" stroke="#7C9082" stroke-width="1.5" fill="none"/><path d="M2 12h20" stroke="#7C9082" stroke-width="1.5"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" stroke="#7C9082" stroke-width="1.5"/>`,
+            
+            'book': `<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" stroke="#D4A373" stroke-width="1.5" fill="none"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" stroke="#D4A373" stroke-width="1.5" fill="none"/>`,
+            
+            'mac': `<rect x="2" y="3" width="20" height="14" rx="2" stroke="#4A4A4A" stroke-width="1.5" fill="none"/><line x1="8" y1="21" x2="16" y2="21" stroke="#4A4A4A" stroke-width="1.5"/><line x1="12" y1="17" x2="12" y2="21" stroke="#4A4A4A" stroke-width="1.5"/>`,
+            
+            'music': `<path d="M9 18V5l12-2v13" stroke="#A8B5BA" stroke-width="1.5" fill="none"/><circle cx="6" cy="18" r="3" stroke="#A8B5BA" stroke-width="1.5"/><circle cx="18" cy="16" r="3" stroke="#A8B5BA" stroke-width="1.5"/>`,
+            
+            'logic': `<rect x="2" y="2" width="20" height="20" rx="5" stroke="#7C9082" stroke-width="1.5" fill="none"/><path d="M8 12h8" stroke="#7C9082" stroke-width="1.5"/><path d="M12 8v8" stroke="#7C9082" stroke-width="1.5"/>`,
+            
+            'keyboard': `<rect x="2" y="4" width="20" height="16" rx="2" stroke="#4A4A4A" stroke-width="1.5" fill="none"/><path d="M6 8h.01" stroke="#4A4A4A" stroke-width="2"/><path d="M10 8h.01" stroke="#4A4A4A" stroke-width="2"/><path d="M14 8h.01" stroke="#4A4A4A" stroke-width="2"/><path d="M18 8h.01" stroke="#4A4A4A" stroke-width="2"/>`,
+            
+            'guitar': `<path d="M12 2c-4 0-4 6 0 6 4 0 4-6 0-6z" stroke="#D4A373" stroke-width="1.5"/><path d="M12 8v14" stroke="#D4A373" stroke-width="1.5"/><path d="M12 14c-4 0-6 4-6 8h12c0-4-2-8-6-8z" stroke="#D4A373" stroke-width="1.5"/>`,
+            
+            'calculator': `<rect x="4" y="2" width="16" height="20" rx="2" stroke="#4A4A4A" stroke-width="1.5" fill="none"/><line x1="8" y1="6" x2="16" y2="6" stroke="#4A4A4A" stroke-width="1.5"/><line x1="8" y1="14" x2="16" y2="14" stroke="#4A4A4A" stroke-width="1.5" stroke-dasharray="0.1 4" stroke-linecap="round"/>`,
+            
+            'flask': `<path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" stroke="#A8B5BA" stroke-width="1.5" fill="none"/>`,
+            
+            'paint': `<path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z" stroke="#7C9082" stroke-width="1.5" fill="none"/>`,
+            
+            'column': `<path d="M6 3h12" stroke="#D4A373" stroke-width="1.5"/><path d="M6 21h12" stroke="#D4A373" stroke-width="1.5"/><path d="M8 3v18" stroke="#D4A373" stroke-width="1.5"/><path d="M16 3v18" stroke="#D4A373" stroke-width="1.5"/>`
+        };
+
+
+        // =================================================================
+        // 2. FILESYSTEM CONFIGURATION (Preserved)
+        // =================================================================
+        const fileSystem = {
+            id: 'root', // Main Hard Drive
+            name: "My Atelier",
+            type: 'folder',
+            items: [
+                // --- Folders ---
+                {
+                    type: 'folder',
+                    id: 'folder-math',
+                    name: 'Math Investigations',
+                    icon: 'folder',
+                    items: [
+                        { name: "Fast Facts", url: "https://bfugitt.github.io/fastfacts/", icon: "calculator" },
+                        { name: "Math Cards", url: "https://bfugitt.github.io/mathcards/", icon: "book" },
+                        { name: "Game of Life", url: "https://bfugitt.github.io/conway/", icon: "logic" },
+                        { name: "Vector Life", url: "https://bfugitt.github.io/vectorlife/", icon: "logic" },
+
+                        { name: "Long Division", url: "https://bfugitt.github.io/division/", icon: "calculator" },
+                        { name: "Multiplication", url: "https://bfugitt.github.io/multiplication/", icon: "calculator" },
+                        { name: "Logic", url: "https://bfugitt.github.io/logic/", icon: "logic" }
+                    ]
+                },
+                {
+                    type: 'folder',
+                    id: 'folder-music',
+                    name: 'Sound Studio',
+                    icon: 'folder',
+                    items: [
+                        { name: "WebSynth", url: "https://bfugitt.github.io/web-synth", icon: "music" },
+                        { name: "Midi Sequencer", url: "https://bfugitt.github.io/midiseq", icon: "music" },
+                        { name: "Songer", url: "https://bfugitt.github.io/songer/", icon: "music" },
+                        { name: "Guitar", url: "https://bfugitt.github.io/guitar/", icon: "guitar" }
+                    ]
+                },
+
+                {
+                    type: 'folder',
+                    id: 'history-music',
+                    name: 'World Stories',
+                    icon: 'folder',
+                    items: [
+                        { name: "Royal Families", url: "https://bfugitt.github.io/learnit/?mod=royals.json", icon: "column" },
+                        { name: "States Map",    url: "https://bfugitt.github.io/states/",           icon: "map" },
+                        { name: "World Map",     url: "https://bfugitt.github.io/world/",            icon: "globe" },
+                        { name: "El Camino Real",    url: "https://bfugitt.github.io/elcaminoreal/",           icon: "map" }
+                        
+                    ]
+                },
+                
+                // --- Loose Apps in Main Window ---
+
+                { name: "Vocabulary",     url: "https://bfugitt.github.io/macvocab/",         icon: "book" },
+                { name: "PixArt Studio",     url: "https://bfugitt.github.io/pixart/",         icon: "paint" },
+                { name: "VectorArt",  url: "https://bfugitt.github.io/vectorpaint/",     icon: "paint" },
+
+                { name: "LearnIt",   url: "https://bfugitt.github.io/learnit/",          icon: "mac" },
+                { name: "MacType",   url: "https://bfugitt.github.io/mactype/",          icon: "keyboard" },
+                { name: "BibleType", url: "https://bfugitt.github.io/bibletype/",        icon: "book" },
+                { name: "Latin Roots",  url: "https://bfugitt.github.io/maclatin/",         icon: "column" }
+            ]
+        };
+
+        // =================================================================
+        // 3. MENU CONFIGURATION (Renamed for Reggio)
+        // =================================================================
+        
+        const menuConfig = {
+            "Lumi": [
+                { label: "About This Space", message: "Classroom Atelier\n\nDesigned for exploration." },
+                "---",
+                { label: "Environment Settings", message: "Adjusting the light..." }
+            ],
+            "Inquiry": [ // Was "File"
+                { label: "New Project", message: "Ready to start a new investigation?" },
+                { label: "Open Journal", message: "Reviewing past documentation..." },
+                { label: "Print", message: "Making learning visible." },
+                { label: "Close", message: "Closing this provocation." },
+            ],
+            "Tools": [ // Was "Edit"
+                { label: "Undo", message: "Mistakes are part of learning." },
+                "---",
+                { label: "Collect", message: "Added to your collection." },
+                { label: "Distribute", message: "Sharing with the group." }
+            ],
+            "Reflection": [ // Was "Special"
+                { label: "Tidy Up", message: "Organizing the environment..." },
+                { label: "Compost Ideas", message: "Recycling thoughts for later." },
+                "---",
+                { label: "Refresh", message: "A new perspective." },
+                { label: "Rest", message: "Time for a break." }
+            ]
+        };
+
+
+        // =================================================================
+        // 4. WINDOW MANAGER LOGIC
+        // =================================================================
+        
+        let zIndexCounter = 100;
+        const windowOffsetStep = 30; // Slightly larger offset
+        let windowSpawnCount = 0;
+        const screenContainer = document.getElementById('virtual-screen');
+
+        // --- Create or Bring to Front a Window ---
+        function openWindow(folderData) {
+            const existingWin = document.getElementById(`win-${folderData.id}`);
+            
+            if (existingWin) {
+                // Already open, bring to front
+                bringToFront(existingWin);
+                return;
+            }
+
+            // Create new Window
+            const win = document.createElement('div');
+            win.className = 'window active';
+            win.id = `win-${folderData.id}`;
+            win.style.zIndex = ++zIndexCounter;
+
+            // Positioning Logic
+            const isMobile = window.innerWidth < 600;
+            if (isMobile) {
+                win.style.width = '90%';
+                win.style.left = '5%';
+                win.style.top = (60 + (windowSpawnCount * 15)) + 'px'; 
+            } else {
+                win.style.width = '560px'; // Wider for more breathing room
+                win.style.left = (60 + (windowSpawnCount * windowOffsetStep)) + 'px';
+                win.style.top = (80 + (windowSpawnCount * windowOffsetStep)) + 'px';
+            }
+            windowSpawnCount++;
+
+            // Window HTML Structure
+            win.innerHTML = `
+                <div class="title-bar">
+                    <div class="window-controls">
+                        <div class="control-dot close-box" onclick="closeWindow('${folderData.id}')"></div>
+                        <div class="control-dot zoom-box"></div>
+                    </div>
+                    <span class="window-title">${folderData.name}</span>
+                </div>
+                <div class="window-info-bar">
+                    <span>${folderData.items.length} Provocations</span>
+                </div>
+                <div class="window-content"></div>
+            `;
+
+            // Inject into screen, not body
+            screenContainer.appendChild(win);
+
+            // Populate Items
+            const contentArea = win.querySelector('.window-content');
+            renderItems(contentArea, folderData.items);
+
+            // Add Click listener for Z-Index
+            win.addEventListener('mousedown', () => bringToFront(win));
+            win.addEventListener('touchstart', () => bringToFront(win), {passive: true});
+        }
+
+        // --- Render Items inside a Window ---
+        function renderItems(container, items) {
+            items.forEach(item => {
+                const iconSvg = iconLibrary[item.icon] || iconLibrary['default'];
+                const iconDiv = document.createElement('div');
+                iconDiv.className = 'window-icon';
+                
+                // Click Handler
+                iconDiv.onclick = (e) => {
+                    e.stopPropagation(); 
+                    if (item.type === 'folder') {
+                        openWindow(item);
+                    } else {
+                        // Standard new tab
+                        window.open(item.url, '_blank');
+                    }
+                };
+
+                iconDiv.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        ${iconSvg}
+                    </svg>
+                    <span class="icon-label">${item.name}</span>
+                `;
+                container.appendChild(iconDiv);
+            });
+        }
+
+        function closeWindow(id) {
+            const win = document.getElementById(`win-${id}`);
+            if (win) {
+                win.remove();
+            }
+        }
+
+        function bringToFront(win) {
+            win.style.zIndex = ++zIndexCounter;
+            document.querySelectorAll('.window').forEach(w => w.classList.remove('active'));
+            win.classList.add('active');
+        }
+
+        // --- Drag Logic ---
+        let dragTarget = null;
+        let dragInitialX, dragInitialY;
+        let dragOffsetX = 0, dragOffsetY = 0;
+
+        document.addEventListener("mousedown", dragStart);
+        document.addEventListener("touchstart", dragStart, {passive: false});
+        
+        document.addEventListener("mousemove", dragMove);
+        document.addEventListener("touchmove", dragMove, {passive: false});
+        
+        document.addEventListener("mouseup", dragEnd);
+        document.addEventListener("touchend", dragEnd);
+
+        function dragStart(e) {
+            const titleBar = e.target.closest('.title-bar');
+            if (e.target.closest('.close-box') || e.target.closest('.zoom-box')) return;
+
+            if (titleBar) {
+                const win = titleBar.closest('.window');
+                if (win) {
+                    if (e.type === 'touchstart') e.preventDefault();
+                    
+                    dragTarget = win;
+                    bringToFront(win);
+
+                    const rect = win.getBoundingClientRect();
+                    
+                    let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+                    let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+                    dragOffsetX = clientX - rect.left;
+                    dragOffsetY = clientY - rect.top;
+                }
+            }
+        }
+
+        function dragMove(e) {
+            if (!dragTarget) return;
+            e.preventDefault();
+
+            let clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            let clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+
+            const containerRect = screenContainer.getBoundingClientRect();
+            
+            let newLeft = clientX - containerRect.left - dragOffsetX;
+            let newTop = clientY - containerRect.top - dragOffsetY;
+
+            dragTarget.style.left = newLeft + 'px';
+            dragTarget.style.top = newTop + 'px';
+        }
+
+        function dragEnd() {
+            dragTarget = null;
+        }
+
+
+        // =================================================================
+        // 5. ALERT & MENU LOGIC
+        // =================================================================
+        
+        const alertModal = document.getElementById('systemAlert');
+        const alertMessageEl = document.getElementById('alertMessage');
+        const menubar = document.getElementById('menubar');
+        let openMenu = null;
+
+        function showAlert(message) {
+            alertMessageEl.textContent = message;
+            alertModal.style.display = 'flex';
+        }
+
+        window.closeAlert = function() {
+            alertModal.style.display = 'none';
+        }
+
+        function renderMenu() {
+            menubar.innerHTML = '';
+            Object.keys(menuConfig).forEach(title => {
+                const menuTitleDiv = document.createElement('div');
+                menuTitleDiv.className = 'menu-title';
+                if(title === "Lumi") menuTitleDiv.classList.add('apple-logo'); // Keep logic but change style
+                menuTitleDiv.textContent = title;
+                
+                const dropdownDiv = document.createElement('div');
+                dropdownDiv.className = 'dropdown-menu';
+                
+                menuConfig[title].forEach(itemData => {
+                    let label, message;
+                    if (typeof itemData === 'string') {
+                        if (itemData === "---") {
+                            const sep = document.createElement('div');
+                            sep.className = 'dropdown-separator';
+                            dropdownDiv.appendChild(sep);
+                            return;
+                        }
+                        label = itemData;
+                        message = "Function not implemented.";
+                    } else {
+                        label = itemData.label;
+                        message = itemData.message || "Function not implemented.";
+                    }
+
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'dropdown-item';
+                    itemDiv.textContent = label;
+                    itemDiv.onclick = (e) => {
+                        e.stopPropagation();
+                        closeAllMenus();
+                        showAlert(message);
+                    };
+                    dropdownDiv.appendChild(itemDiv);
+                });
+
+                menuTitleDiv.onclick = (e) => {
+                    e.stopPropagation();
+                    if (openMenu === dropdownDiv) {
+                        closeAllMenus();
+                    } else {
+                        closeAllMenus();
+                        dropdownDiv.classList.add('visible');
+                        menuTitleDiv.classList.add('active');
+                        openMenu = dropdownDiv;
+                    }
+                };
+                
+                menuTitleDiv.appendChild(dropdownDiv);
+                menubar.appendChild(menuTitleDiv);
+            });
+        }
+
+        function closeAllMenus() {
+            document.querySelectorAll('.dropdown-menu').forEach(el => el.classList.remove('visible'));
+            document.querySelectorAll('.menu-title').forEach(el => el.classList.remove('active'));
+            openMenu = null;
+        }
+
+        document.body.addEventListener('click', closeAllMenus);
+
+
+        // =================================================================
+        // INITIALIZATION
+        // =================================================================
+        renderMenu();
+        openWindow(fileSystem);
+
+    </script>
+</body>
+</html>
